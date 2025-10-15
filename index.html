@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartEdu - Kuis Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 24px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 12px;
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        [x-cloak] { display: none !important; }
+        .chart-bar {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="app" x-data="smartEduApp()" class="flex flex-col min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-md">
+            <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <img src="https://storage.googleapis.com/agent-tools-public-images/project-images/b444040156d04212953258c7e997a0f6.jpg" alt="Logo SmartEdu" class="h-10 w-10 object-contain">
+                    <h1 class="text-2xl font-bold text-gray-700">SmartEdu</h1>
+                </div>
+                <div x-show="loggedInUser">
+                    <button @click="logout()" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-6 py-8">
+
+            <!-- Login Page -->
+            <div id="login-page" x-show="!loggedInUser && page === 'login'" x-cloak>
+                <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg">
+                     <div class="flex justify-center mb-6">
+                        <img src="https://storage.googleapis.com/agent-tools-public-images/project-images/b444040156d04212953258c7e997a0f6.jpg" alt="Logo SmartEdu" class="h-20 w-20 object-contain">
+                    </div>
+                    <h2 class="text-3xl font-bold text-center mb-6">Login ke SmartEdu</h2>
+                    <div class="space-y-4">
+                        <div>
+                             <label for="role" class="block text-sm font-medium text-gray-600">Login sebagai</label>
+                            <select id="role" x-model="loginForm.role" @change="loginForm.username = ''" class="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="siswa">Siswa</option>
+                                <option value="guru">Guru</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label for="username" class="block text-sm font-medium text-gray-600" x-text="loginForm.role === 'guru' ? 'Nama Guru' : 'Username'"></label>
+                            <input type="text" id="username" x-model="loginForm.username" x-show="loginForm.role !== 'guru'" class="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Masukkan username">
+                            <select id="teacher-username" x-model="loginForm.username" x-show="loginForm.role === 'guru'" class="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="" disabled>-- Pilih Guru --</option>
+                                <template x-for="guru in getTeachers()" :key="guru.id">
+                                    <option :value="guru.id" x-text="guru.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-gray-600">Password</label>
+                            <input type="password" id="password" x-model="loginForm.password" @keyup.enter="login()" class="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Masukkan password">
+                        </div>
+                       
+                        <p x-show="loginError" class="text-red-500 text-sm" x-text="loginError"></p>
+                        <button @click="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 text-lg">Login</button>
+                    </div>
+                     <p class="text-center text-sm text-gray-600 mt-6" x-show="loginForm.role === 'siswa'">
+                        Belum punya akun? <a href="#" @click.prevent="page = 'register'" class="font-semibold text-blue-600 hover:underline">Daftar di sini</a>
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Registration Page -->
+            <div id="register-page" x-show="!loggedInUser && page === 'register'" x-cloak>
+                <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg">
+                    <h2 class="text-3xl font-bold text-center mb-6">Daftar Akun Siswa</h2>
+                    <div class="space-y-4">
+                        <input type="text" x-model="registerForm.name" placeholder="Nama Lengkap" class="w-full px-4 py-2 border rounded-lg">
+                        <input type="text" x-model="registerForm.id" placeholder="Username" class="w-full px-4 py-2 border rounded-lg">
+                        <input type="password" x-model="registerForm.password" placeholder="Password" class="w-full px-4 py-2 border rounded-lg">
+                        <input type="text" x-model="registerForm.class" placeholder="Kelas (contoh: Kelas 10A)" class="w-full px-4 py-2 border rounded-lg">
+                        <p x-show="formError" class="text-red-500 text-sm" x-text="formError"></p>
+                        <button @click="registerStudent()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg">Daftar</button>
+                    </div>
+                     <p class="text-center text-sm text-gray-600 mt-6">
+                        Sudah punya akun? <a href="#" @click.prevent="page = 'login'" class="font-semibold text-blue-600 hover:underline">Login di sini</a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Admin Dashboard -->
+            <div id="admin-dashboard" x-show="loggedInUser && loggedInUser.role === 'admin'" x-cloak>
+                 <h2 class="text-3xl font-bold mb-6">Dashboard Admin</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-xl font-bold">Manajemen Guru</h3>
+                                <button @click="openNewTeacherModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">+ Tambah Guru</button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                        <tr><th class="px-4 py-2">Nama</th><th class="px-4 py-2">Mapel</th><th class="px-4 py-2">Kelas</th><th class="px-4 py-2">Aksi</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="guru in getTeachers()" :key="guru.id">
+                                            <tr class="border-b"><td class="px-4 py-2 font-medium" x-text="guru.name"></td><td class="px-4 py-2" x-text="guru.subject"></td><td class="px-4 py-2" x-text="guru.class"></td><td class="px-4 py-2"><button @click="openEditTeacherModal(guru.id)" class="text-cyan-600 hover:underline mr-2">Edit</button><button @click="deleteUser(guru.id)" class="text-red-600 hover:underline">Hapus</button></td></tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                             <h3 class="text-xl font-bold mb-4">Pemantauan Siswa</h3>
+                             <div class="overflow-x-auto">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                        <tr><th class="px-4 py-2">Nama</th><th class="px-4 py-2">Kelas</th><th class="px-4 py-2">Guru</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="siswa in getStudents()" :key="siswa.id">
+                                            <tr class="border-b"><td class="px-4 py-2 font-medium" x-text="siswa.name"></td><td class="px-4 py-2" x-text="siswa.class"></td><td class="px-4 py-2" x-text="getTeacherForStudent(siswa.class)?.name || 'N/A'"></td></tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-bold mb-6">Analisis Performa</h3>
+                        <div>
+                            <h4 class="font-semibold mb-3">Guru Terbaik (Jml Kuis)</h4>
+                            <div class="space-y-3">
+                                <template x-for="teacher in getTopTeachersData()" :key="teacher.id">
+                                    <div class="w-full">
+                                        <span class="text-sm font-medium" x-text="teacher.name + ' (' + teacher.quizCount + ' kuis)'"></span>
+                                        <div class="w-full bg-gray-200 rounded-full h-4 mt-1"><div class="bg-blue-500 h-4 rounded-full chart-bar" :style="`width: ${teacher.percentage}%`"></div></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <hr class="my-6">
+                        <div>
+                            <h4 class="font-semibold mb-3">Siswa Terbaik (Rata-rata Nilai)</h4>
+                             <div class="space-y-3">
+                                <template x-for="student in getTopStudentsData()" :key="student.id">
+                                    <div class="w-full">
+                                        <span class="text-sm font-medium" x-text="student.name + ' (Rata-rata: ' + student.avgScore.toFixed(0) + ')'"></span>
+                                        <div class="w-full bg-gray-200 rounded-full h-4 mt-1"><div class="bg-green-500 h-4 rounded-full chart-bar" :style="`width: ${student.avgScore}%`"></div></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Views -->
+            <div x-cloak>
+                <!-- Student Dashboard -->
+                <div id="student-dashboard" x-show="loggedInUser && loggedInUser.role === 'siswa' && page === 'studentDashboard'">
+                    <h2 class="text-3xl font-bold mb-1" x-text="'Selamat datang, ' + loggedInUser?.name + '!'"></h2>
+                    <p class="text-gray-500 mb-6" x-text="'Kelas: ' + loggedInUser?.class"></p>
+                    
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="font-bold text-lg mb-2">Progres Belajar</h3>
+                            <p class="text-gray-600">Total kuis dikerjakan: <span class="font-bold" x-text="getStudentProgress().quizCount"></span></p>
+                            <p class="text-gray-600">Rata-rata Nilai: <span class="font-bold" x-text="getStudentProgress().avgScore.toFixed(1)"></span></p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="font-bold text-lg mb-2">Notifikasi</h3>
+                            <p class="text-gray-600" x-text="`${getQuizzesForStudent().length} kuis baru tersedia untuk dikerjakan.`"></p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-bold mb-4">Kuis Tersedia</h3>
+                        <div class="space-y-4">
+                            <template x-for="quiz in getQuizzesForStudent()" :key="quiz.id">
+                                <div class="border p-4 rounded-lg flex justify-between items-center">
+                                    <div>
+                                        <h4 class="font-bold" x-text="quiz.title"></h4>
+                                        <p class="text-sm text-gray-500" x-text="quiz.questions.length + ' soal oleh ' + users[quiz.teacherId]?.name"></p>
+                                    </div>
+                                    <button @click="startQuiz(quiz.id)" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Kerjakan</button>
+                                </div>
+                            </template>
+                             <div x-show="getQuizzesForStudent().length === 0" class="text-center text-gray-500 py-4">
+                                Belum ada kuis yang tersedia untuk Anda.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Take Quiz Page -->
+                <div id="take-quiz-page" x-show="loggedInUser && loggedInUser.role === 'siswa' && page === 'takeQuiz'">
+                    <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+                        <h2 class="text-2xl font-bold mb-4" x-text="currentQuiz?.title"></h2>
+                        <div class="mb-6">
+                            <p class="text-lg font-semibold mb-2" x-text="'Soal ' + (currentQuestionIndex + 1) + ' dari ' + currentQuiz?.questions.length"></p>
+                            <p class="text-xl" x-text="currentQuiz?.questions[currentQuestionIndex]?.q"></p>
+                        </div>
+                        <textarea x-model="studentAnswers[currentQuestionIndex]" class="w-full px-4 py-2 border rounded-lg mb-6" rows="4" placeholder="Ketik jawaban Anda di sini..."></textarea>
+                        <div class="flex justify-between items-center">
+                            <button @click="currentQuestionIndex--" :disabled="currentQuestionIndex === 0" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg disabled:opacity-50">Sebelumnya</button>
+                            <button x-show="currentQuestionIndex < currentQuiz?.questions.length - 1" @click="currentQuestionIndex++" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Selanjutnya</button>
+                            <button x-show="currentQuestionIndex === currentQuiz?.questions.length - 1" @click="submitQuiz()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Selesaikan Kuis</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quiz Result Page -->
+                 <div id="quiz-result-page" x-show="loggedInUser && loggedInUser.role === 'siswa' && page === 'quizResult'">
+                     <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-lg text-center">
+                        <h2 class="text-3xl font-bold mb-2">Kuis Selesai!</h2>
+                        <p class="text-xl text-gray-600 mb-6">Berikut adalah hasil Anda:</p>
+                        <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-lg mb-6">
+                            <p class="font-bold text-lg">Skor Anda</p>
+                            <p class="text-5xl font-bold" x-text="quizResult?.score.toFixed(0)"></p>
+                        </div>
+                        <h3 class="text-xl font-bold my-4 text-left">Pembahasan Jawaban</h3>
+                        <div class="space-y-4 text-left">
+                            <template x-for="(question, index) in quizResult?.quiz.questions" :key="index">
+                                <div class="border p-4 rounded-lg">
+                                    <p class="font-semibold" x-text="'Soal: ' + question.q"></p>
+                                    <p class="text-sm" :class="quizResult.answers[index] === question.a ? 'text-green-600' : 'text-red-600'">Jawaban Anda: <span x-text="quizResult.answers[index] || '(Tidak dijawab)'"></span></p>
+                                    <p class="text-sm text-blue-600">Jawaban Benar: <span x-text="question.a"></span></p>
+                                </div>
+                            </template>
+                        </div>
+                        <button @click="page = 'studentDashboard'" class="mt-8 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg">Kembali ke Dashboard</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Teacher Dashboard -->
+            <div id="teacher-dashboard" x-show="loggedInUser && loggedInUser.role === 'guru'" x-cloak>
+                 <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-3xl font-bold" x-text="'Dashboard Guru: ' + loggedInUser?.name"></h2>
+                        <p class="text-gray-500" x-text="'Mengajar ' + loggedInUser?.subject + ' di ' + loggedInUser?.class"></p>
+                    </div>
+                    <button @click="openNewQuizModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">+ Buat Kuis</button>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4">Manajemen Kuis</h3>
+                    <div class="space-y-4 max-h-96 overflow-y-auto pr-2">
+                        <template x-for="quiz in loggedInUser ? getQuizzesByTeacher(loggedInUser.id) : []" :key="quiz.id">
+                            <div class="border p-4 rounded-lg flex justify-between items-center">
+                                <div>
+                                    <h4 class="font-bold" x-text="quiz.title"></h4>
+                                    <p class="text-sm text-gray-500" x-text="quiz.questions.length + ' soal'"></p>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button @click="showLeaderboard(quiz.id)" class="text-sm bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-1 px-2 rounded">Peringkat</button>
+                                    <button @click="openEditQuizModal(quiz.id)" class="text-sm bg-cyan-500 hover:bg-cyan-600 text-white font-semibold py-1 px-2 rounded">Edit</button>
+                                    <button @click="deleteQuiz(quiz.id)" class="text-sm bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded">Hapus</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODALS -->
+            <div id="teacher-editor-modal" class="modal" :class="{'flex': teacherModalOpen}">
+                 <div class="modal-content w-full max-w-lg" x-show="teacherModalOpen" x-transition>
+                    <span @click="teacherModalOpen = false" class="close-button">&times;</span>
+                    <h3 class="text-2xl font-bold mb-6" x-text="teacherForm.isEdit ? 'Edit Guru' : 'Tambah Guru Baru'"></h3>
+                    <div class="space-y-4">
+                        <input type="text" x-model="teacherForm.name" placeholder="Nama Lengkap" class="w-full px-4 py-2 border rounded-lg"><input type="text" x-model="teacherForm.id" placeholder="Username (untuk login)" class="w-full px-4 py-2 border rounded-lg" :disabled="teacherForm.isEdit"><input type="text" x-model="teacherForm.password" placeholder="Password" class="w-full px-4 py-2 border rounded-lg"><input type="text" x-model="teacherForm.subject" placeholder="Mata Pelajaran" class="w-full px-4 py-2 border rounded-lg"><input type="text" x-model="teacherForm.class" placeholder="Kelas yang Diajar" class="w-full px-4 py-2 border rounded-lg">
+                        <p x-show="formError" class="text-red-500 text-sm" x-text="formError"></p>
+                        <button @click="saveTeacher()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Simpan</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="quiz-editor-modal" class="modal" :class="{'flex': quizModalOpen}">
+                 <div class="modal-content w-full max-w-2xl" x-show="quizModalOpen" x-transition>
+                    <span @click="quizModalOpen = false" class="close-button">&times;</span>
+                    <h3 class="text-2xl font-bold mb-6" x-text="quizForm.id ? 'Edit Kuis' : 'Buat Kuis Baru'"></h3>
+                    <div class="space-y-4">
+                        <input type="text" x-model="quizForm.title" placeholder="Judul Kuis" class="w-full px-4 py-2 border rounded-lg">
+                        <hr>
+                        <h4 class="font-semibold">Soal-soal:</h4>
+                        <div class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                            <template x-for="(q, index) in quizForm.questions" :key="index">
+                                <div class="p-3 border rounded-lg">
+                                    <label class="block text-sm font-medium">Soal <span x-text="index + 1"></span></label>
+                                    <textarea x-model="q.q" placeholder="Tulis pertanyaan" class="w-full px-3 py-1 mt-1 border rounded-md"></textarea>
+                                    <label class="block text-sm font-medium mt-2">Jawaban Benar</label>
+                                    <input type="text" x-model="q.a" placeholder="Tulis jawaban benar" class="w-full px-3 py-1 mt-1 border rounded-md">
+                                    <button @click="removeQuestion(index)" class="text-red-500 text-sm mt-2 hover:underline">Hapus Soal</button>
+                                </div>
+                            </template>
+                        </div>
+                        <button @click="addQuestion()" class="text-sm bg-gray-200 hover:bg-gray-300 py-2 px-3 rounded-lg">+ Tambah Soal</button>
+                        <hr>
+                        <p x-show="formError" class="text-red-500 text-sm" x-text="formError"></p>
+                        <button @click="saveQuiz()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Simpan Kuis</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="leaderboard-modal" class="modal" :class="{'flex': leaderboardModalOpen}">
+                 <div class="modal-content w-full max-w-lg" x-show="leaderboardModalOpen" x-transition>
+                    <span @click="leaderboardModalOpen = false" class="close-button">&times;</span>
+                    <h3 class="text-2xl font-bold mb-1">Papan Peringkat</h3>
+                    <p class="text-gray-600 mb-6" x-text="leaderboardData.title"></p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr><th class="px-4 py-2">Peringkat</th><th class="px-4 py-2">Nama Siswa</th><th class="px-4 py-2">Skor</th></tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(result, index) in leaderboardData.results" :key="index">
+                                    <tr class="border-b"><td class="px-4 py-2 font-medium" x-text="index + 1"></td><td class="px-4 py-2" x-text="result.studentName"></td><td class="px-4 py-2 font-bold" x-text="result.score.toFixed(0)"></td></tr>
+                                </template>
+                                <tr x-show="leaderboardData.results.length === 0">
+                                    <td colspan="3" class="text-center py-4 text-gray-500">Belum ada siswa yang mengerjakan kuis ini.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="bg-white mt-auto">
+            <div class="container mx-auto px-6 py-4 text-center text-gray-500">&copy; 2025 SmartEdu. Hak Cipta Dilindungi.</div>
+        </footer>
+    </div>
+
+    <script>
+        function smartEduApp() {
+            return {
+                // DATA
+                page: 'login',
+                loggedInUser: null,
+                loginForm: { username: '', password: '', role: 'siswa' },
+                registerForm: { name: '', id: '', password: '', class: '' },
+                loginError: '', formError: '',
+                users: {
+                    'admin': { password: 'admin', role: 'admin', name: 'Admin Utama' },
+                    'guruindah': { password: 'guru123', role: 'guru', name: 'Ibu Indah', subject: 'Matematika', class: 'Kelas 10A' },
+                    'gurubudi': { password: 'guru123', role: 'guru', name: 'Bapak Budi', subject: 'Fisika', class: 'Kelas 10B' },
+                    'budisanjaya': { password: '123', role: 'siswa', name: 'Budi Sanjaya', class: 'Kelas 10A' },
+                    'anita': { password: '123', role: 'siswa', name: 'Anita Lestari', class: 'Kelas 10A' },
+                    'charlie': { password: '123', role: 'siswa', name: 'Charlie Darmawan', class: 'Kelas 10B' },
+                },
+                quizzes: [
+                    { id: 1, teacherId: 'guruindah', title: 'Kuis Aljabar Dasar', questions: [ { q: 'Berapakah hasil dari 2x + 5 = 15?', a: '5' }, {q: 'Sederhanakan ekspresi 3(x + 2)', a: '3x + 6'}] },
+                    { id: 2, teacherId: 'gurubudi', title: 'Kuis Hukum Newton', questions: [ { q: 'Apa bunyi Hukum Newton I?', a: 'Inersia' } ] },
+                ],
+                studentResults: [ 
+                    { resultId: 1, studentId: 'budisanjaya', quizId: 1, score: 50, answers: {0: '10'} },
+                    { resultId: 2, studentId: 'anita', quizId: 1, score: 100, answers: {0: '5', 1: '3x + 6'} },
+                    { resultId: 3, studentId: 'charlie', quizId: 2, score: 100, answers: {0: 'Inersia'} }
+                ],
+                
+                // UI STATE & FORMS
+                teacherModalOpen: false,
+                teacherForm: { id: '', name: '', password: '', subject: '', class: '', isEdit: false },
+                quizModalOpen: false,
+                quizForm: { id: null, title: '', questions: [] },
+                leaderboardModalOpen: false,
+                leaderboardData: { title: '', results: [] },
+
+                // STUDENT QUIZ STATE
+                currentQuiz: null,
+                currentQuestionIndex: 0,
+                studentAnswers: {},
+                quizResult: null,
+
+                // METHODS
+                login() {
+                    if (!this.loginForm.username) { this.loginError = 'Username atau nama guru harus dipilih.'; return; }
+                    const user = this.users[this.loginForm.username.toLowerCase()];
+                    if (user && user.password === this.loginForm.password && user.role === this.loginForm.role) {
+                        this.loggedInUser = { id: this.loginForm.username.toLowerCase(), ...user };
+                        this.loginError = '';
+                        if(user.role === 'siswa') this.page = 'studentDashboard';
+                    } else { this.loginError = 'Nama, password, atau peran salah!'; }
+                },
+                logout() { this.loggedInUser = null; this.page = 'login'; this.loginForm = { username: '', password: '', role: 'siswa' }; },
+                
+                registerStudent() {
+                    if (!this.registerForm.name || !this.registerForm.id || !this.registerForm.password || !this.registerForm.class) { this.formError = 'Semua kolom harus diisi.'; return; }
+                    if (this.users[this.registerForm.id.toLowerCase()]) { this.formError = 'Username sudah digunakan.'; return; }
+                    this.users[this.registerForm.id.toLowerCase()] = { password: this.registerForm.password, name: this.registerForm.name, role: 'siswa', class: this.registerForm.class };
+                    alert('Pendaftaran berhasil! Silakan login.');
+                    this.page = 'login';
+                    this.registerForm = { name: '', id: '', password: '', class: '' };
+                    this.formError = '';
+                },
+
+                // USER MANAGEMENT
+                getTeachers() { return Object.entries(this.users).filter(([id, u]) => u.role === 'guru').map(([id, u]) => ({ id, ...u })); },
+                getStudents() { return Object.entries(this.users).filter(([id, u]) => u.role === 'siswa').map(([id, u]) => ({ id, ...u })); },
+                openNewTeacherModal() { this.teacherForm = { id: '', name: '', password: '', subject: '', class: '', isEdit: false }; this.formError = ''; this.teacherModalOpen = true; },
+                openEditTeacherModal(id) { const user = this.users[id]; this.teacherForm = { id, name: user.name, password: user.password, subject: user.subject, class: user.class, isEdit: true }; this.formError = ''; this.teacherModalOpen = true; },
+                saveTeacher() {
+                    if (!this.teacherForm.id || !this.teacherForm.name || !this.teacherForm.password || !this.teacherForm.subject || !this.teacherForm.class) { this.formError = 'Semua kolom harus diisi.'; return; }
+                    if (!this.teacherForm.isEdit && this.users[this.teacherForm.id.toLowerCase()]) { this.formError = 'Username sudah ada.'; return; }
+                    this.users[this.teacherForm.id.toLowerCase()] = { password: this.teacherForm.password, name: this.teacherForm.name, role: 'guru', subject: this.teacherForm.subject, class: this.teacherForm.class };
+                    this.teacherModalOpen = false;
+                },
+                deleteUser(id) { if (confirm(`Yakin ingin menghapus ${this.users[id].name}?`)) { delete this.users[id]; } },
+                
+                // QUIZ MANAGEMENT (TEACHER)
+                getQuizzesByTeacher(teacherId) { return this.quizzes.filter(q => q.teacherId === teacherId); },
+                openNewQuizModal() { this.quizForm = { id: null, title: '', questions: [{q:'', a:''}] }; this.formError = ''; this.quizModalOpen = true; },
+                openEditQuizModal(id) { const quiz = this.quizzes.find(q => q.id === id); this.quizForm = JSON.parse(JSON.stringify(quiz)); this.formError = ''; this.quizModalOpen = true; },
+                addQuestion() { this.quizForm.questions.push({ q: '', a: '' }); },
+                removeQuestion(index) { this.quizForm.questions.splice(index, 1); },
+                saveQuiz() {
+                    if (!this.quizForm.title || this.quizForm.questions.length === 0) { this.formError = 'Judul dan minimal 1 soal harus diisi.'; return; }
+                    const quizData = JSON.parse(JSON.stringify(this.quizForm));
+                    if (quizData.id) { // Edit quiz
+                        const index = this.quizzes.findIndex(q => q.id === quizData.id);
+                        if(index !== -1) this.quizzes[index] = quizData;
+                    } else { // New quiz
+                        quizData.id = Date.now();
+                        quizData.teacherId = this.loggedInUser.id;
+                        this.quizzes.push(quizData);
+                    }
+                    this.quizModalOpen = false;
+                },
+                deleteQuiz(id) { if (confirm('Yakin ingin menghapus kuis ini?')) { this.quizzes = this.quizzes.filter(q => q.id !== id); } },
+                showLeaderboard(quizId) {
+                    const quiz = this.quizzes.find(q => q.id === quizId);
+                    if (!quiz) return;
+                    const results = this.studentResults
+                        .filter(r => r.quizId === quizId)
+                        .map(result => ({ studentName: this.users[result.studentId]?.name || 'Siswa Dihapus', score: result.score }))
+                        .sort((a, b) => b.score - a.score);
+                    this.leaderboardData = { title: quiz.title, results: results };
+                    this.leaderboardModalOpen = true;
+                },
+                
+                // QUIZ TAKING (STUDENT)
+                getQuizzesForStudent() { if(!this.loggedInUser) return []; const teacher = this.getTeachers().find(t => t.class === this.loggedInUser?.class); return teacher ? this.getQuizzesByTeacher(teacher.id) : []; },
+                startQuiz(id) { this.currentQuiz = this.quizzes.find(q => q.id === id); this.currentQuestionIndex = 0; this.studentAnswers = {}; this.page = 'takeQuiz'; },
+                submitQuiz() {
+                    let correctAnswers = 0;
+                    this.currentQuiz.questions.forEach((q, index) => {
+                        if(this.studentAnswers[index]?.trim().toLowerCase() === q.a.trim().toLowerCase()) { correctAnswers++; }
+                    });
+                    const score = (correctAnswers / this.currentQuiz.questions.length) * 100;
+                    this.quizResult = { quiz: this.currentQuiz, answers: this.studentAnswers, score };
+                    this.studentResults.push({ resultId: Date.now(), studentId: this.loggedInUser.id, quizId: this.currentQuiz.id, score, answers: this.studentAnswers });
+                    this.page = 'quizResult';
+                },
+
+                // DASHBOARD HELPERS
+                getStudentProgress() {
+                    if (!this.loggedInUser) return { quizCount: 0, avgScore: 0 };
+                    const results = this.studentResults.filter(r => r.studentId === this.loggedInUser.id);
+                    const quizCount = results.length;
+                    const avgScore = quizCount > 0 ? results.reduce((sum, r) => sum + r.score, 0) / quizCount : 0;
+                    return { quizCount, avgScore };
+                },
+                getTeacherForStudent(studentClass) { return this.getTeachers().find(t => t.class === studentClass); },
+                getTopTeachersData() {
+                    const teachers = this.getTeachers();
+                    const teacherData = teachers.map(t => ({...t, quizCount: this.getQuizzesByTeacher(t.id).length }));
+                    const maxQuizzes = Math.max(...teacherData.map(t => t.quizCount), 0);
+                    return teacherData.map(t => ({...t, percentage: maxQuizzes > 0 ? (t.quizCount / maxQuizzes) * 100 : 0 })).sort((a,b) => b.quizCount - a.quizCount);
+                },
+                getTopStudentsData() {
+                    const students = this.getStudents();
+                    const studentData = students.map(s => {
+                        const results = this.studentResults.filter(r => r.studentId === s.id);
+                        const avgScore = results.length > 0 ? results.reduce((sum, r) => sum + r.score, 0) / results.length : 0;
+                        return { ...s, avgScore };
+                    });
+                    return studentData.sort((a,b) => b.avgScore - a.avgScore);
+                },
+            }
+        }
+    </script>
+
+</body>
+</html>
