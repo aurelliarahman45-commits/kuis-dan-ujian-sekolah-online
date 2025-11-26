@@ -31,6 +31,7 @@
         <header class="bg-white shadow-md">
             <div class="container mx-auto px-6 py-4 flex justify-between items-center">
                 <div class="flex items-center space-x-3">
+                    <!-- LOGO LAMA (SESUAI PERMINTAAN) -->
                     <img src="https://storage.googleapis.com/agent-tools-public-images/project-images/b444040156d04212953258c7e997a0f6.jpg" alt="Logo SmartEdu" class="h-10 w-10 object-contain">
                     <h1 class="text-2xl font-bold text-gray-700">SmartEdu</h1>
                 </div>
@@ -47,6 +48,7 @@
             <div id="login-page" x-show="!loggedInUser && page === 'login'" x-cloak>
                 <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg">
                      <div class="flex justify-center mb-6">
+                        <!-- LOGO LAMA (SESUAI PERMINTAAN) -->
                         <img src="https://storage.googleapis.com/agent-tools-public-images/project-images/b444040156d04212953258c7e997a0f6.jpg" alt="Logo SmartEdu" class="h-20 w-20 object-contain">
                     </div>
                     <h2 class="text-3xl font-bold text-center mb-6">Login ke SmartEdu</h2>
@@ -84,7 +86,7 @@
                         <input type="text" x-model="registerForm.name" placeholder="Nama Lengkap" class="w-full px-4 py-2 border rounded-lg">
                         <input type="email" x-model="registerForm.email" placeholder="Email" class="w-full px-4 py-2 border rounded-lg">
                         <input type="password" x-model="registerForm.password" placeholder="Password" class="w-full px-4 py-2 border rounded-lg">
-                        <input type="text" x-model="registerForm.classValue" placeholder="Kelas (contoh: Kelas 10A)" class="w-full px-4 py-2 border rounded-lg">
+                        <input type="text" x-model="registerForm.classValue" placeholder="Kelas (contoh: 12 K)" class="w-full px-4 py-2 border rounded-lg">
                         <p x-show="formError" class="text-red-500 text-sm" x-text="formError"></p>
                         <button @click="registerStudent()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg">Daftar</button>
                     </div>
@@ -126,7 +128,7 @@
                                     </thead>
                                     <tbody>
                                         <template x-for="siswa in getStudents()" :key="siswa.id">
-                                            <tr class="border-b"><td class="px-4 py-2 font-medium" x-text="siswa.name"></td><td class="px-4 py-2" x-text="siswa.class"></td><td class="px-4 py-2" x-text="getTeacherForStudent(siswa.class)?.name || 'N/A'"></td></tr>
+                                            <tr class="border-b"><td class="px-4 py-2 font-medium" x-text="siswa.name"></td><td class="px-4 py-2" x-text="siswa.class"></td><td class="px-4 py-2" x-text="getTeacherForStudent(siswa.class)"></td></tr>
                                         </template>
                                     </tbody>
                                 </table>
@@ -188,7 +190,7 @@
                                 <div class="border p-4 rounded-lg flex justify-between items-center">
                                     <div>
                                         <h4 class="font-bold" x-text="quiz.title"></h4>
-                                        <p class="text-sm text-gray-500" x-text="quiz.questions.length + ' soal oleh ' + getTeacherById(quiz.teacher_id)?.name"></p>
+                                        <p class="text-sm text-gray-500" x-text="quiz.questions.length + ' soal oleh ' + (getTeacherById(quiz.teacher_id)?.name || 'Guru')"></p>
                                     </div>
                                     <button @click="startQuiz(quiz)" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Kerjakan</button>
                                 </div>
@@ -208,7 +210,23 @@
                             <p class="text-lg font-semibold mb-2" x-text="'Soal ' + (currentQuestionIndex + 1) + ' dari ' + currentQuiz?.questions.length"></p>
                             <p class="text-xl" x-text="currentQuiz?.questions[currentQuestionIndex]?.q"></p>
                         </div>
-                        <textarea x-model="studentAnswers[currentQuestionIndex]" class="w-full px-4 py-2 border rounded-lg mb-6" rows="4" placeholder="Ketik jawaban Anda di sini..."></textarea>
+                        
+                        <!-- PERUBAHAN Tampilan Siswa (Esai) -->
+                        <div x-show="currentQuiz?.questions[currentQuestionIndex]?.type === 'essay'">
+                            <textarea x-model="studentAnswers[currentQuestionIndex]" class="w-full px-4 py-2 border rounded-lg mb-6" rows="4" placeholder="Ketik jawaban Anda di sini..."></textarea>
+                        </div>
+
+                        <!-- PERUBAHAN Tampilan Siswa (Pilihan Ganda) -->
+                        <div x-show="currentQuiz?.questions[currentQuestionIndex]?.type === 'abc'" class="space-y-3 mb-6">
+                            <!-- PERBAIKAN: Tambahkan fallback array kosong '|| []' -->
+                            <template x-for="option in (currentQuiz?.questions[currentQuestionIndex]?.options || []).filter(opt => opt)">
+                                <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="radio" :name="'q' + currentQuestionIndex" :value="option" x-model="studentAnswers[currentQuestionIndex]" class="mr-3 text-blue-600 focus:ring-blue-500">
+                                    <span x-text="option"></span>
+                                </label>
+                            </template>
+                        </div>
+
                         <div class="flex justify-between items-center">
                             <button @click="currentQuestionIndex--" :disabled="currentQuestionIndex === 0" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg disabled:opacity-50">Sebelumnya</button>
                             <button x-show="currentQuestionIndex < currentQuiz?.questions.length - 1" @click="currentQuestionIndex++" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Selanjutnya</button>
@@ -233,6 +251,12 @@
                                     <p class="font-semibold" x-text="'Soal: ' + question.q"></p>
                                     <p class="text-sm" :class="studentAnswers[index] === question.a ? 'text-green-600' : 'text-red-600'">Jawaban Anda: <span x-text="studentAnswers[index] || '(Tidak dijawab)'"></span></p>
                                     <p class="text-sm text-blue-600">Jawaban Benar: <span x-text="question.a"></span></p>
+                                    <!-- PERUBAHAN Tampilan Review Kuis (Tampilkan Opsi) -->
+                                    <div x-show="question.type === 'abc'" class="text-xs text-gray-500 mt-1">
+                                        <span>Pilihan: </span>
+                                        <!-- PERBAIKAN: Tambahkan fallback array kosong '|| []' -->
+                                        <span x-text="(question.options || []).filter(opt => opt).join(', ')"></span>
+                                    </div>
                                 </div>
                             </template>
                         </div>
@@ -246,7 +270,7 @@
                  <div class="flex justify-between items-center mb-6">
                     <div>
                         <h2 class="text-3xl font-bold" x-text="'Dashboard Guru: ' + loggedInUser?.name"></h2>
-                        <p class="text-gray-500" x-text="'Mengajar ' + loggedInUser?.subject + ' di ' + loggedInUser?.class"></p>
+                        <p class="text-gray-500" x-text="'Mengajar ' + loggedInUser?.subject + ' di: ' + loggedInUser?.class"></p>
                     </div>
                     <button @click="openNewQuizModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">+ Buat Kuis</button>
                 </div>
@@ -283,7 +307,7 @@
                         <input type="email" x-model="teacherForm.email" placeholder="Email (untuk login)" class="w-full px-4 py-2 border rounded-lg" :disabled="teacherForm.isEdit">
                         <input type="text" x-model="teacherForm.password" :placeholder="teacherForm.isEdit ? 'Password (biarkan kosong jika tidak diubah)' : 'Password'" class="w-full px-4 py-2 border rounded-lg">
                         <input type="text" x-model="teacherForm.subject" placeholder="Mata Pelajaran" class="w-full px-4 py-2 border rounded-lg">
-                        <input type="text" x-model="teacherForm.class" placeholder="Kelas yang Diajar" class="w-full px-4 py-2 border rounded-lg">
+                        <input type="text" x-model="teacherForm.class" placeholder="Kelas (contoh: 12 K, 12 L, 12 M)" class="w-full px-4 py-2 border rounded-lg">
                         <p x-show="formError" class="text-red-500 text-sm" x-text="formError"></p>
                         <button @click="saveTeacher()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Simpan</button>
                     </div>
@@ -304,8 +328,31 @@
                                 <div class="p-3 border rounded-lg">
                                     <label class="block text-sm font-medium">Soal <span x-text="index + 1"></span></label>
                                     <textarea x-model="q.q" placeholder="Tulis pertanyaan" class="w-full px-3 py-1 mt-1 border rounded-md"></textarea>
-                                    <label class="block text-sm font-medium mt-2">Jawaban Benar</label>
-                                    <input type="text" x-model="q.a" placeholder="Tulis jawaban benar" class="w-full px-3 py-1 mt-1 border rounded-md">
+                                    
+                                    <!-- PERUBAHAN Form Guru (Dropdown Tipe Soal) -->
+                                    <label class="block text-sm font-medium mt-2">Tipe Soal</label>
+                                    <select x-model="q.type" class="w-full px-3 py-1 mt-1 border rounded-md bg-white">
+                                        <option value="essay">Esai</option>
+                                        <option value="abc">Pilihan Ganda</option>
+                                    </select>
+                                    
+                                    <!-- PERUBAHAN Form Guru (Jawaban Esai) -->
+                                    <div x-show="q.type === 'essay'">
+                                        <label class="block text-sm font-medium mt-2">Jawaban Benar</label>
+                                        <input type="text" x-model="q.a" placeholder="Tulis jawaban benar" class="w-full px-3 py-1 mt-1 border rounded-md">
+                                    </div>
+
+                                    <!-- PERUBAHAN Form Guru (Opsi Pilihan Ganda) -->
+                                    <div x-show="q.type === 'abc'" class="mt-2 space-y-2">
+                                        <label class="block text-sm font-medium">Opsi Pilihan Ganda</label>
+                                        <input type="text" x-model="q.options[0]" placeholder="Opsi A" class="w-full px-3 py-1 text-sm border rounded-md">
+                                        <input type="text" x-model="q.options[1]" placeholder="Opsi B" class="w-full px-3 py-1 text-sm border rounded-md">
+                                        <input type="text" x-model="q.options[2]" placeholder="Opsi C" class="w-full px-3 py-1 text-sm border rounded-md">
+                                        <input type="text" x-model="q.options[3]" placeholder="Opsi D" class="w-full px-3 py-1 text-sm border rounded-md">
+                                        <label class="block text-sm font-medium mt-2">Jawaban Benar</label>
+                                        <input type="text" x-model="q.a" placeholder="Tulis jawaban yang benar (contoh: Opsi A)" class="w-full px-3 py-1 mt-1 border rounded-md">
+                                    </div>
+
                                     <button @click="removeQuestion(index)" class="text-red-500 text-sm mt-2 hover:underline">Hapus Soal</button>
                                 </div>
                             </template>
@@ -594,9 +641,33 @@
 
             // === GURU METHODS ===
             getQuizzesByTeacher(teacherId) { return this.quizzes.filter(q => q.teacher_id === teacherId); },
-            openNewQuizModal() { this.quizForm = { id: null, title: '', questions: [{q:'', a:''}] }; this.formError = ''; this.quizModalOpen = true; },
-            openEditQuizModal(quiz) { this.quizForm = JSON.parse(JSON.stringify(quiz)); this.formError = ''; this.quizModalOpen = true; },
-            addQuestion() { this.quizForm.questions.push({ q: '', a: '' }); },
+            openNewQuizModal() { this.quizForm = { id: null, title: '', questions: [{q:'', type: 'essay', a: '', options: ['','','','']}] }; this.formError = ''; this.quizModalOpen = true; },
+            
+            // --- PERBAIKAN DARI ERROR SEBELUMNYA ---
+            openEditQuizModal(quiz) { 
+                // 1. Salin kuisnya
+                let quizToEdit = JSON.parse(JSON.stringify(quiz)); 
+                
+                // 2. Perbaiki (normalize) setiap soal
+                quizToEdit.questions.forEach(q => {
+                    // Jika soal tidak punya 'type', set default ke 'essay'
+                    if (!q.type) {
+                        q.type = 'essay';
+                    }
+                    // Jika soal tidak punya 'options', tambahkan array kosong
+                    if (!q.options) {
+                        q.options = ['','','',''];
+                    }
+                });
+                
+                // 3. Set ke form
+                this.quizForm = quizToEdit;
+                this.formError = ''; 
+                this.quizModalOpen = true; 
+            },
+            // --- BATAS PERBAIKAN ---
+
+            addQuestion() { this.quizForm.questions.push({ q: '', type: 'essay', a: '', options: ['','','',''] }); },
             removeQuestion(index) { this.quizForm.questions.splice(index, 1); },
             
             async saveQuiz() {
@@ -653,9 +724,28 @@
                 
             // === SISWA METHODS ===
             getQuizzesForStudent() { 
-                if(!this.loggedInUser) return []; 
-                const teacher = this.getTeachers().find(t => t.class === this.loggedInUser.class); 
-                return teacher ? this.quizzes.filter(q => q.teacher_id === teacher.id) : []; 
+                if (!this.loggedInUser || !this.loggedInUser.class) return []; // Cek keamanan
+
+                const studentClass = this.loggedInUser.class.trim().toLowerCase(); // e.g., "12 k"
+
+                // 1. Temukan semua guru yang mengajar kelas siswa ini
+                const matchingTeachers = this.getTeachers().filter(teacher => {
+                    if (!teacher.class) return false; // Lewati guru yg tidak punya data kelas
+                    
+                    // Ubah "12 K, 12 L, 12 M" menjadi ["12 k", "12 l", "12 m"]
+                    const teacherClasses = teacher.class.split(',').map(c => c.trim().toLowerCase());
+                    
+                    // Cek apakah "12 k" (kelas siswa) ada di dalam array kelas guru
+                    return teacherClasses.includes(studentClass);
+                });
+
+                // 2. Ambil ID dari guru-guru tersebut
+                const teacherIds = matchingTeachers.map(t => t.id); // e.g., [uuid_dodi, uuid_indah]
+
+                if (teacherIds.length === 0) return []; // Tidak ada guru yg mengajar
+
+                // 3. Ambil semua kuis yang dibuat oleh guru-guru tersebut
+                return this.quizzes.filter(quiz => teacherIds.includes(quiz.teacher_id));
             },
             startQuiz(quiz) { this.currentQuiz = quiz; this.currentQuestionIndex = 0; this.studentAnswers = {}; this.page = 'takeQuiz'; },
             
@@ -698,7 +788,22 @@
 
             // === HELPERS ===
             getTeacherById(id) { return this.users.find(u => u.id === id); },
-            getTeacherForStudent(studentClass) { return this.getTeachers().find(t => t.class === studentClass); },
+            getTeacherForStudent(studentClass) {
+                if (!studentClass) return 'N/A';
+                const studentClassLower = studentClass.trim().toLowerCase();
+                
+                // Temukan semua guru yang mengajar kelas ini
+                const teachers = this.getTeachers().filter(teacher => {
+                    if (!teacher.class) return false;
+                    const teacherClasses = teacher.class.split(',').map(c => c.trim().toLowerCase());
+                    return teacherClasses.includes(studentClassLower);
+                });
+
+                if (teachers.length === 0) return 'N/A';
+                
+                // Jika ada guru, gabungkan nama mereka
+                return teachers.map(t => t.name).join(', ');
+            },
             getTopTeachersData() {
                 const teachers = this.getTeachers();
                 const teacherData = teachers.map(t => ({...t, quizCount: this.quizzes.filter(q => q.teacher_id === t.id).length }));
